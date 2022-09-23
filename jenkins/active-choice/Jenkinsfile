@@ -1,0 +1,104 @@
+pipeline {
+    agent any
+
+    stages {
+        stage("Setup") {
+            steps {
+                script {
+                    parameter_list = []
+                        
+                    parameter_list.add(template_single_choice(
+                        "Language",
+                        "Language selection",
+                        '''
+                        return ["golang", "java", "python"]
+                        '''
+                        ))
+                    
+                    parameter_list.add(template_reference_choice(
+                        "Framework",
+                        "Framework selection",
+                        "Language",
+                        '''
+                            if(Language.equals("golang")) {
+                                return ["gin", "echo", "gorilla"]
+                            } else if (Language.equals("java")) {
+                                return ["spring boot", "spring cloud"]
+                            } else if (Language.equals("python")) {
+                                return ["django", "falsk", "fastapi"]
+                            } else {
+                                return ["language selection"]
+                            }
+                        '''
+                    ))
+
+                    properties([
+                        parameters(parameter_list)
+                    ])
+                }
+            }
+        }
+
+        stage("Echo") {
+            steps {
+                echo "${Language}"
+                echo "${Framework}"
+            }
+        }
+    }
+}
+
+//***************************************
+// Active choices parameter
+
+def template_single_choice(name, description, script) {
+    template = [
+        $class: 'ChoiceParameter', 
+        choiceType: 'PT_SINGLE_SELECT', 
+        description: description, 
+        filterLength: 1, 
+        filterable: false, 
+        name: name,
+        script: [
+            $class: 'GroovyScript', 
+            fallbackScript: [
+                classpath: [], 
+                sandbox: false, 
+                script: 
+                    "return['Could not get The environemnts']"
+            ], 
+            script: [
+                classpath: [], 
+                sandbox: false, 
+                script: script
+            ]
+        ]
+    ]
+
+    return template
+}
+
+def template_reference_choice(name, description, referencedParams, script) {
+    template = [
+        $class: 'CascadeChoiceParameter',
+        choiceType: 'PT_SINGLE_SELECT', 
+        description: description,
+        name: name, 
+        referencedParameters: referencedParams, 
+        script: 
+            [$class: 'GroovyScript', 
+            fallbackScript: [
+                    classpath: [], 
+                    sandbox: false, 
+                    script: "return['Could not get The environemnts']"
+                    ], 
+            script: [
+                    classpath: [], 
+                    sandbox: false, 
+                    script: script
+                ] 
+        ]
+    ]
+
+    return template
+}
